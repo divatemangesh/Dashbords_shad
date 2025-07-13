@@ -5,13 +5,24 @@
 
   let { updateNodeData } = useSvelteFlow();
 
+  console.log('data:', data);
+  // log data which is passed as props or data field is empty 
+  if (!data || Object.keys(data).length === 0) {
+    console.log('No data passed as props or data field is empty');
+  } else {
+    console.log('Data passed as props:', data);
+  }
+
+  // Normalize data if it's an array
+  if (Array.isArray(data)) {
+    data = data[0];
+  }
   if (!data.categories) {
     data.categories = [
-      { name: 'Category A', count: 90 },
-      { name: 'Category B', count: 90 },
-      // { name: 'Category C', count: 90 },
-      // { name: 'Category D', count: 90 },
-      // { name: 'Category E', count: 90 },
+      { name: 'abc', count: 120 },
+      { name: 'lmn B', count: 90 },
+      { name: 'xyz C', count: 90 },
+      { name: 'abc D', count: 90 },
     ];
   }
 
