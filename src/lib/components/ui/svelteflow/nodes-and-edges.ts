@@ -4,6 +4,8 @@ export const initialNodes: Node[] = [
 	{
 		id: '1',
 		position: { x: 175, y: 0 },
+		draggable: false, // Prevents dragging of the node
+
 		type: 'textUpdater',
 		data: [
 			{
@@ -114,7 +116,13 @@ export const initialEdges: Edge[] = [
 	{
 		id: 'e1-2',
 		source: '1',
-		target: '2'
+		target: '2',
+		type: 'step',
+		animated: false,
+
+		// Custom style for the edge
+		// This will override the default style
+		style: { stroke: '#f6ab00', strokeWidth: 40 }
 	},
 	{
 		id: 'e1-3',
