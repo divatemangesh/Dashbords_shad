@@ -1,100 +1,87 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { fetchTree } from '$lib/services/api';
+  import { apiData, apiError, apiStatus } from '$lib/stores/dataStore';
+  import { flow } from '$lib/stores/flowStore';
+
   import {
     SvelteFlow,
     Background,
-    type Node,
-    type Edge,
-    type NodeEventWithPointer,
-    type ColorMode,
+    Controls,
     MiniMap,
-    Controls,Panel
+    type ColorMode,
+    type NodeEventWithPointer
   } from '@xyflow/svelte';
   import TextUpdaterNode from './TextUpdaterNode.svelte';
-  const nodeTypes = { textUpdater: TextUpdaterNode };
-
   import ContextMenu from './ContextMenu.svelte';
-  import { initialNodes, initialEdges } from './nodes-and-edges';
-  import { getElkLayout } from './elk-layout.ts';
   import '@xyflow/svelte/dist/style.css';
 
-  let colorMode: ColorMode = $state('light');
-  let nodes = $state.raw<Node[]>(initialNodes);
-  let edges = $state.raw<Edge[]>(initialEdges);
+  const nodeTypes = { textUpdater: TextUpdaterNode };
 
-  let menu: {
-    id: string;
-    top?: number;
-    left?: number;
-    right?: number;
-    bottom?: number;
-  } | null = $state(null);
-  let clientWidth: number = $state();
-  let clientHeight: number = $state();
+  let colorMode: ColorMode = 'light';
+  let menu: { id: string; top?: number; left?: number } | null = null;
+  let clientWidth: number;
+  let clientHeight: number;
 
-  // ELK layout integration
-  async function layoutNodes() {
-    // Use $state.raw to get plain arrays for ELKjs
-   nodes = await getElkLayout(nodes, edges); // <-- pass plain arrays
-  }
-
-  // Run layout when nodes or edges change
-$effect(() => {
-  layoutNodes();
-});
-  const handleContextMenu: NodeEventWithPointer = ({ event, node }) => {
-    event.preventDefault();
-    menu = {
-      id: node.id,
-      top: event.clientY < clientHeight - 200 ? event.clientY : undefined,
-      left: event.clientX < clientWidth - 200 ? event.clientX : undefined,
-      right:
-        event.clientX >= clientWidth - 200
-          ? clientWidth - event.clientX
-          : undefined,
-      bottom:
-        event.clientY >= clientHeight - 200
-          ? clientHeight - event.clientY
-          : undefined,
-    };
+  const params = {
+    session_id: '<your session id>',
+    target_variable: 'is_high_income',
+    numeric_strategy: 'threshold',
+    cat_strategy: 'chi2',
+    max_depth: 1,
+    node_id: '<your node id>'
   };
 
-  function handlePaneClick() {
-    menu = null;
+  async function handleFetchTree() {
+    apiStatus.set({ code: 0, loading: true });
+    apiError.set(null);
+
+    try {
+      const data = await fetchTree(params);
+      apiData.set(data);           // triggers the derived
+      apiStatus.set({ code: 200, loading: false });
+    } catch (e) {
+      apiError.set((e as Error).message);
+      apiStatus.set({ code: 500, loading: false });
+    }
   }
+
+  // onMount(handleFetchTree);
+
+  const handleContextMenu: NodeEventWithPointer = ({ event, node }) => {
+    event.preventDefault();
+    menu = { id: node.id, top: event.clientY, left: event.clientX };
+  };
+  function handlePaneClick() { menu = null; }
 </script>
 
-<div style="display: flex; flex-direction: column; height: 90vh;">
-  <div style="flex: 1 1 auto;" bind:clientWidth bind:clientHeight>
+<div style="display:flex;flex-direction:column;height:90vh;">
+  <div style="flex:1" bind:clientWidth bind:clientHeight>
+    <!-- ONE‑WAY props here: -->
     <SvelteFlow
-      bind:nodes
-      bind:edges
-      onnodecontextmenu={handleContextMenu}
-      onpaneclick={handlePaneClick}
+      bind:nodes={$flow.nodes}
+      bind:edges={$flow.edges}
       {nodeTypes}
       {colorMode}
       fitView
+      onnodecontextmenu={handleContextMenu}
+      onpaneclick={handlePaneClick}
     >
       <Background />
       {#if menu}
-        <ContextMenu
-          onclick={handlePaneClick}
-          id={menu.id}
-          top={menu.top}
-          left={menu.left}
-          right={menu.right}
-          bottom={menu.bottom}
-        />
+        <ContextMenu {menu} on:close={handlePaneClick} />
       {/if}
-
-        <Controls />
-    <MiniMap />
+      <Controls />
+      <MiniMap />
     </SvelteFlow>
   </div>
 </div>
-<Panel>
-    <select bind:value={colorMode}>
-      <option value="dark">dark</option>
-      <option value="light">light</option>
-      <option value="system">system</option>
-    </select>
-  </Panel>
+
+<div style="padding:1rem;border-top:1px solid #ddd;">
+  <button on:click={handleFetchTree}>Refresh Tree</button>
+  <select bind:value={colorMode}>
+    <option value="light">light</option>
+    <option value="dark">dark</option>
+    <option value="system">system</option>
+  </select>
+</div>

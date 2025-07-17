@@ -1,0 +1,77 @@
+{
+	"id": "70b374cc-4d47-47cb-81ce-ba4c5c42be3f",
+	"depth_level": 0,
+	"parent_id": null,
+	"parent_var_name": null,
+	"split_on_value": null,
+	"target": "is_high_income",
+	"samples": 300,
+	"split_variable": "marital_status",
+	"split_values": { "Divorced": ["Divorced"], "Single": ["Single"], "Married": ["Married"] },
+	"p_value": 0.24902623740769342,
+	"is_terminal": false,
+	"target_distribution": {
+		"0": { "count": 144, "percent": 48 },
+		"1": { "count": 156, "percent": 52 }
+	},
+	"children": [
+		{
+			"id": "ae8464bd-282a-43a6-95e6-ba1b468e5f30",
+			"depth_level": 1,
+			"parent_id": "70b374cc-4d47-47cb-81ce-ba4c5c42be3f",
+			"parent_var_name": "marital_status",
+			"split_on_value": "Divorced",
+			"target": "is_high_income",
+			"samples": 100,
+			"split_variable": null,
+			"split_values": null,
+			"p_value": null,
+			"is_terminal": true,
+			"target_distribution": {
+				"0": { "count": 48, "percent": 48 },
+				"1": { "count": 52, "percent": 52 }
+			},
+			"children": [],
+			"stop_reason": "max_depth_reached"
+		},
+		{
+			"id": "11150d76-74e5-40ac-8732-a47f7d7c1846",
+			"depth_level": 1,
+			"parent_id": "70b374cc-4d47-47cb-81ce-ba4c5c42be3f",
+			"parent_var_name": "marital_status",
+			"split_on_value": "Single",
+			"target": "is_high_income",
+			"samples": 94,
+			"split_variable": null,
+			"split_values": null,
+			"p_value": null,
+			"is_terminal": true,
+			"target_distribution": {
+				"0": { "count": 51, "percent": 54.26 },
+				"1": { "count": 43, "percent": 45.74 }
+			},
+			"children": [],
+			"stop_reason": "max_depth_reached"
+		},
+		{
+			"id": "482f53a6-a335-4ee6-8975-e5bb815eb57a",
+			"depth_level": 1,
+			"parent_id": "70b374cc-4d47-47cb-81ce-ba4c5c42be3f",
+			"parent_var_name": "marital_status",
+			"split_on_value": "Married",
+			"target": "is_high_income",
+			"samples": 106,
+			"split_variable": null,
+			"split_values": null,
+			"p_value": null,
+			"is_terminal": true,
+			"target_distribution": {
+				"0": { "count": 45, "percent": 42.45 },
+				"1": { "count": 61, "percent": 57.55 }
+			},
+			"children": [],
+			"stop_reason": "max_depth_reached"
+		}
+	],
+	"stop_reason": null
+}

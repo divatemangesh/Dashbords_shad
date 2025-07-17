@@ -1,117 +1,103 @@
 <script lang="ts">
-	import { onMount } from "svelte";
-	import { apiData } from '$lib/stores/dataStore';
-	import { apiTreeToNodesEdges } from '$lib/components/ui/svelteflow/api_call.ts';
+  import { onMount } from 'svelte';
+  import { apiData, apiError, apiStatus } from '$lib/stores/dataStore';
+	import { flow } from '$lib/stores/flowStore';
+  import { generateFlowData } from '$lib/components/ui/svelteflow/TransformNode';
+  import { fetchTree, createSession } from '$lib/services/api';
+  // import SvelteFlow from '@xyflow/svelte'; 
+  let params = {
+    session_id: '<session id  here if only http_cookie is not used >',
+    target_variable: 'is_high_income',
+    numeric_strategy: 'threshold',
+    cat_strategy: 'chi2',
+    max_depth: 1,
+    node_id: 'dae390bd-c907-42ed-94bd-e977e9f7794d'
+  };
 
-	const apiResponse =  apiData;
+  onMount(async () => {
+    apiStatus.set({ code: 0, loading: true });
+    apiError.set(null);
+    try {
+      const data = await fetchTree(params);
+      apiData.set(data);
+      apiStatus.set({ code: 200, loading: false });
+    } catch (e) {
+      apiError.set(e.message);
+      apiStatus.set({ code: (e as any).status || 500, loading: false });
+    }
+  });
 
-	const { nodes, edges } = apiTreeToNodesEdges(apiResponse);
+  async function handleCreateSession() {
+    apiStatus.set({ code: 0, loading: true });
+    apiError.set(null);
+    try {
+      const data = await createSession();
+      // Optionally update params.session_id if you want to use it elsewhere
+      params.session_id = data.session_id;
+      apiStatus.set({ code: 200, loading: false });
+      alert('Session created!'); // Optional: feedback for user
+    } catch (e) {
+      apiError.set(e.message);
+      apiStatus.set({ code: (e as any).status || 500, loading: false });
+    }
+  }
 
-
-	let code = "3a679666-ad40-4e33-a69d-aaae7c7874e6";
-	let target_variable = "is_high_income";
-	let numeric_strategy = "threshold";
-	let cat_strategy = "chi2";
-	let max_depth: number | null = 1;
-	let node_id = "dae390bd-c907-42ed-94bd-e977e9f7794d"; // Default node_id
-	let result: any = null;
-	let responseCode: number | null = null;
-	let error: string | null = null;
-
-	const numericOptions = ["threshold"];
-	const catOptions = ["chi2", "gini", "entropy"];
-
-	async function callApi() {
-		error = null;
-		responseCode = null;
-		try {
-			const params = new URLSearchParams({
-				session_id: code,
-				numeric_strategy,
-				cat_strategy,
-				target_variable,
-				max_depth: max_depth !== null ? String(max_depth) : "",
-				node_id
-			});
-			const response = await fetch(`http://localhost:8000/api/tree/${code}?${params.toString()}`, {
-				method: "GET",
-				headers: { "Content-Type": "application/json" }
-			});
-			responseCode = response.status;
-			if (!response.ok) {
-				error = `Error: ${response.status} ${response.statusText}`;
-				result = null;
-			} else {
-				result = await response.json();
-				apiData.set(result);
-
-			}
-		} catch (e) {
-			error = `Fetch error: ${e}`;
-			result = null;
-		}
-	}
+  async function handleFetchTree() {
+    apiStatus.set({ code: 0, loading: true });
+    apiError.set(null);
+    try {
+      const data = await fetchTree(params);
+      apiData.set(data);
+      apiStatus.set({ code: 200, loading: false });
+    } catch (e) {
+      apiError.set(e.message);
+      apiStatus.set({ code: (e as any).status || 500, loading: false });
+    }
+  }
 </script>
 
-{#if responseCode && responseCode !== 200}
-	<p style="color: red;">Response code: {responseCode}</p>
-{/if}
-{#if error}
-	<p style="color: red;">{error}</p>
-{/if}
+<button on:click={handleCreateSession}>
+  Create Session
+</button>
+<button on:click={handleFetchTree}>
+  Fetch Tree
+</button>
 
-<div class="flex flex-col gap-2">
-	<input
-		type="text"
-		bind:value={code}
-		placeholder="Enter session code"
-		class="input input-bordered"
-	/>
-	<input
-		type="text"
-		bind:value={target_variable}
-		placeholder="Enter target variable"
-		class="input input-bordered"
-	/>
-	<input
-		type="number"
-		bind:value={max_depth}
-		placeholder="Enter max depth"
-		class="input input-bordered"
-	/>
-	<input
-		type="text"
-		bind:value={node_id}
-		placeholder="Enter node id"
-		class="input input-bordered"
-	/>
-	<select bind:value={numeric_strategy} class="select select-bordered">
-		<option value="" disabled selected>Select numeric strategy</option>
-		{#each numericOptions as option}
-			<option value={option}>{option}</option>
-		{/each}
-	</select>
-	<select bind:value={cat_strategy} class="select select-bordered">
-		<option value="" disabled selected>Select categorical strategy</option>
-		{#each catOptions as option}
-			<option value={option}>{option}</option>
-		{/each}
-	</select>
-	<button class="btn btn-primary" on:click={callApi}>
-		Fetch Data
-	</button>
-</div>
+{#if $apiStatus.loading}
+  <p>Loading…</p>
+			{console.log("loader loaded")}
 
-{#if result}
-	<!-- <p>{JSON.stringify(result)}</p> -->
-
-	<p style="color: red;">{JSON.stringify($apiData)}</p>
-	<p style="color: green;">Nodes: {JSON.stringify(nodes)}</p>
-	<p tyle="color: blue;">Edges: {JSON.stringify(edges)}</p>
-
-
-
+{:else if $apiError}
+  <p class="error">{$apiError}</p>
+{:else}
+  <!-- Debug: Show raw apiData -->
+  <pre>{$apiData ? JSON.stringify($apiData, null, 2) : 'No data'}</pre>
+  {#if $apiData}
+		{console.log("apidata present ")}
+    {@const { nodes, edges } = generateFlowData($apiData)}
+    <!-- <SvelteFlow {nodes} {edges} /> -->
+  {/if}
 {/if}
 
 
+<pre style="color: green;">
+  Edges: {JSON.stringify($flow.edges, null, 2)}
+</pre>
+
+
+<pre style="color: red;">
+  Nodes: {JSON.stringify($flow.nodes, null, 2)}
+</pre>
+
+
+
+
+
+
+<!-- 
+	<p>
+	<strong>{$apiData}</strong>  </p>
+
+	<p>
+	<strong>{JSON.stringify($apiData, null, 2)}</strong>  </p> -->
 
