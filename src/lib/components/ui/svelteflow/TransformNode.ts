@@ -11,7 +11,7 @@ type TreeNode = {
 	children: TreeNode[];
 };
 
-type Category = { name: string; count: number; percent: number };
+type Category = { name: string; count: number; percent: number; percentage: number };
 
 type Meta = {
 	parentNodeId: string | null;
@@ -70,7 +70,8 @@ export function generateFlowData(tree: TreeNode): { nodes: FlowNode[]; edges: Fl
 		const categories: Category[] = Object.entries(node.target_distribution).map(([name, dist]) => ({
 			name,
 			count: dist.count,
-			percent: dist.percent
+			percent: dist.percent,
+			percentage: dist.percent
 		}));
 
 		// assemble the FlowNode

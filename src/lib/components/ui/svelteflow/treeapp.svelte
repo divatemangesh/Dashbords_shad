@@ -1,14 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { fetchTree } from '$lib/services/api';
-  import { apiData, apiError, apiStatus } from '$lib/stores/dataStore';
-  import { flow } from '$lib/stores/flowStore';
-
+  import { generateFlowData } from '$lib/components/ui/svelteflow/TransformNode';
+  import { getElkLayout } from '$lib/components/ui/svelteflow/elk-layout';
   import {
     SvelteFlow,
     Background,
     Controls,
     MiniMap,
+    type Node,
+    type Edge,
     type ColorMode,
     type NodeEventWithPointer
   } from '@xyflow/svelte';
@@ -18,11 +19,19 @@
 
   const nodeTypes = { textUpdater: TextUpdaterNode };
 
+  // Local graph state
+  let nodes: Node[] = [];
+  let edges: Edge[] = [];
+
+  // UI state
+  let loading = false;
+  let error: string | null = null;
   let colorMode: ColorMode = 'light';
   let menu: { id: string; top?: number; left?: number } | null = null;
   let clientWidth: number;
   let clientHeight: number;
 
+  // Your API parameters
   const params = {
     session_id: '<your session id>',
     target_variable: 'is_high_income',
@@ -32,22 +41,39 @@
     node_id: '<your node id>'
   };
 
-  async function handleFetchTree() {
-    apiStatus.set({ code: 0, loading: true });
-    apiError.set(null);
+  // Full fetch → transform → layout pipeline
+  async function loadTreeData() {
+    const raw = await fetchTree(params);
+    const { nodes: flat, edges: rawEdges } = generateFlowData(raw);
+    const laidOut = await getElkLayout(flat, rawEdges);
+    return { nodes: laidOut, edges: rawEdges };
+  }
+
+  // Clear then re-assign with tick
+  async function refreshTree() {
+    loading = true;
+    error = null;
 
     try {
-      const data = await fetchTree(params);
-      apiData.set(data);           // triggers the derived
-      apiStatus.set({ code: 200, loading: false });
+      // 1) Clear existing nodes/edges
+      nodes = [];
+      edges = [];
+      await tick(); // allow SvelteFlow to tear down
+
+      // 2) Fetch & rebuild
+      const { nodes: newNodes, edges: newEdges } = await loadTreeData();
+      nodes = newNodes;
+      edges = newEdges;
     } catch (e) {
-      apiError.set((e as Error).message);
-      apiStatus.set({ code: 500, loading: false });
+      error = (e as Error).message;
+    } finally {
+      loading = false;
     }
   }
 
-  // onMount(handleFetchTree);
+  onMount(refreshTree);
 
+  // Context-menu handlers
   const handleContextMenu: NodeEventWithPointer = ({ event, node }) => {
     event.preventDefault();
     menu = { id: node.id, top: event.clientY, left: event.clientX };
@@ -55,15 +81,23 @@
   function handlePaneClick() { menu = null; }
 </script>
 
-<div style="display:flex;flex-direction:column;height:90vh;">
+<style>
+  .controls { padding:1rem; border-top:1px solid #ddd; }
+  .error    { color:red; margin-top:0.5rem; }
+  .loading  { opacity:0.6; }
+</style>
+
+<div class:loading={loading} style="display:flex;flex-direction:column;height:90vh;">
   <div style="flex:1" bind:clientWidth bind:clientHeight>
-    <!-- ONE‑WAY props here: -->
     <SvelteFlow
-      bind:nodes={$flow.nodes}
-      bind:edges={$flow.edges}
+      bind:nodes
+      bind:edges
       {nodeTypes}
       {colorMode}
       fitView
+      minZoom={0.05}      
+      maxZoom={4}        
+      fitViewOptions={{ padding: 0.1, includeHiddenNodes: false }}
       onnodecontextmenu={handleContextMenu}
       onpaneclick={handlePaneClick}
     >
@@ -77,11 +111,22 @@
   </div>
 </div>
 
-<div style="padding:1rem;border-top:1px solid #ddd;">
-  <button on:click={handleFetchTree}>Refresh Tree</button>
+<div class="controls">
+  <button on:click={refreshTree} disabled={loading}>
+    {#if loading}
+      ⏳ Loading…
+    {:else}
+      🔄 Refresh Tree
+    {/if}
+  </button>
+
   <select bind:value={colorMode}>
     <option value="light">light</option>
     <option value="dark">dark</option>
     <option value="system">system</option>
   </select>
+
+  {#if error}
+    <div class="error">Error: {error}</div>
+  {/if}
 </div>
